@@ -35,7 +35,22 @@ export default function AddReferredPage() {
 
       console.log(values);
 
-      // API Call Here
+      const res = await fetch("/api/referred", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          ...values,
+          companyId: id,
+        }),
+      });
+
+      const result = await res.json();
+
+      if (!result.success) {
+        throw new Error(result.message);
+      }
 
       toast.success("Referred user added successfully");
 
@@ -85,11 +100,10 @@ export default function AddReferredPage() {
                   placeholder="Enter full name"
                   className={`w-full rounded-xl border px-3 py-2.5
 
-                  ${
-                    touched.name && errors.name
+                  ${touched.name && errors.name
                       ? "border-red-500"
                       : "border-gray-300"
-                  }
+                    }
 
                   focus:outline-none
                   focus:ring-2
@@ -116,11 +130,10 @@ export default function AddReferredPage() {
                   placeholder="Enter email"
                   className={`w-full rounded-xl border px-3 py-2.5
 
-                  ${
-                    touched.email && errors.email
+                  ${touched.email && errors.email
                       ? "border-red-500"
                       : "border-gray-300"
-                  }
+                    }
 
                   focus:outline-none
                   focus:ring-2
@@ -146,11 +159,10 @@ export default function AddReferredPage() {
                   placeholder="98XXXXXXXX"
                   className={`w-full rounded-xl border px-3 py-2.5
 
-                  ${
-                    touched.contact && errors.contact
+                  ${touched.contact && errors.contact
                       ? "border-red-500"
                       : "border-gray-300"
-                  }
+                    }
 
                   focus:outline-none
                   focus:ring-2

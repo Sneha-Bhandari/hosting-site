@@ -8,26 +8,55 @@ export default function EditStudent({ student, onClose, onUpdate, isLoading }) {
   const [passportPreview, setPassportPreview] = useState('');
   const [educationalPreview, setEducationalPreview] = useState('');
   const [otherPreview, setOtherPreview] = useState('');
+  const [existingFiles, setExistingFiles] = useState({
+    passportFileId: null,
+    educationalFileId: null,
+    otherFileId: null
+  });
 
   useEffect(() => {
-    if (student.passportFile && typeof student.passportFile === 'string') {
-      setPassportPreview(student.passportFile);
-    }
-    if (student.educationalDocuments && typeof student.educationalDocuments === 'string') {
-      setEducationalPreview(student.educationalDocuments);
-    }
-    if (student.otherDocuments && typeof student.otherDocuments === 'string') {
-      setOtherPreview(student.otherDocuments);
+    const fetchFileDetails = async () => {
+      try {
+        if (student.passportFileId) {
+          const res = await fetch(`/api/upload?id=${student.passportFileId}`);
+          const data = await res.json();
+          if (data.success) {
+            setPassportPreview(data.data.fileUrl);
+            setExistingFiles(prev => ({ ...prev, passportFileId: student.passportFileId }));
+          }
+        }
+
+        if (student.educationalFileId) {
+          const res = await fetch(`/api/upload?id=${student.educationalFileId}`);
+          const data = await res.json();
+          if (data.success) {
+            setEducationalPreview(data.data.fileUrl);
+            setExistingFiles(prev => ({ ...prev, educationalFileId: student.educationalFileId }));
+          }
+        }
+
+        if (student.otherFileId) {
+          const res = await fetch(`/api/upload?id=${student.otherFileId}`);
+          const data = await res.json();
+          if (data.success) {
+            setOtherPreview(data.data.fileUrl);
+            setExistingFiles(prev => ({ ...prev, otherFileId: student.otherFileId }));
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching file details:', error);
+      }
+    };
+
+    if (student) {
+      fetchFileDetails();
     }
   }, [student]);
 
-  // Map student data to match the form field names
   const initialValues = {
-    // Course Details
+    id: student.id,
     courseTitle: student.course || '',
     academicYear: student.academicYear || '',
-    
-    // Personal Details
     name: student.name || '',
     surname: student.surname || '',
     dateOfBirth: student.dateOfBirth || '',
@@ -45,36 +74,34 @@ export default function EditStudent({ student, onClose, onUpdate, isLoading }) {
     issueCountry: student.issueCountry || '',
     issueDate: student.issueDate || '',
     expiryDate: student.expiryDate || '',
-    
-    // Emergency Contact
     contactName: student.contactName || '',
     contactAddress: student.contactAddress || '',
     contactPhone: student.contactPhone || '',
     contactEmail: student.contactEmail || '',
     relationship: student.relationship || '',
-    
-    // Attachments - Keep the URLs for existing files
-    passportFile: student.passportFile || null,
-    educationalDocuments: student.educationalDocuments || null,
-    otherDocuments: student.otherDocuments || null,
-    
-    // Agency
+    passportFile: passportPreview || null,
+    educationalDocuments: educationalPreview || null,
+    otherDocuments: otherPreview || null,
     agencyName: student.agencyName || '',
     agencyEmail: student.agencyEmail || 'admissions@learnkey.com.mt',
-    
-    // Privacy Policy
     acceptPrivacy: student.acceptPrivacy || false,
+    passportFileId: student.passportFileId || null,
+    educationalFileId: student.educationalFileId || null,
+    otherFileId: student.otherFileId || null,
   };
 
   const handleUpdate = async (values) => {
-    // Pass the updated values with the student ID
-    await onUpdate({ ...values, id: student.id });
+    const updateData = {
+      ...values,
+      id: student.id
+    };
+    
+    await onUpdate(updateData);
   };
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-        {/* Header */}
         <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between z-10 rounded-t-3xl">
           <div>
             <h2 className="text-2xl font-bold text-gray-800">Edit Student Application</h2>
@@ -91,7 +118,6 @@ export default function EditStudent({ student, onClose, onUpdate, isLoading }) {
           </button>
         </div>
 
-        {/* Form Content */}
         <div className="p-6">
           <StudentForm
             onSubmit={handleUpdate}
@@ -104,6 +130,7 @@ export default function EditStudent({ student, onClose, onUpdate, isLoading }) {
               educational: educationalPreview,
               other: otherPreview
             }}
+            isEdit={true}
           />
         </div>
       </div>

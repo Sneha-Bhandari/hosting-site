@@ -1,4 +1,10 @@
 import "./globals.css";
+import { initializeApp } from '@/lib/init';
+
+if (typeof window === 'undefined') {
+  initializeApp().catch(console.error);
+}
+
 
 export default function RootLayout({ children }) {
   return (

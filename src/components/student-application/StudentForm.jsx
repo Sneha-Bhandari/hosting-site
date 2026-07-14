@@ -2,26 +2,39 @@
 
 import { Formik, Form, Field, ErrorMessage } from 'formik';
 import * as Yup from 'yup';
-import { 
-  X, Upload, FileText, AlertCircle, Check, Loader2, Eye, Trash2, BsImages
+import {
+  X, Upload, FileText, AlertCircle, Check, Loader2, Eye, Trash2
 } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
+import toast from 'react-hot-toast';
 
-export default function StudentForm({ onSubmit, isLoading, initialValues, onClose, isInline = false }) {
+export default function StudentForm({ 
+  onSubmit, 
+  isLoading, 
+  initialValues, 
+  onClose, 
+  isInline = false,
+  existingPreviews = {},
+  isEdit = false
+}) {
   const passportInputRef = useRef(null);
   const educationalInputRef = useRef(null);
   const otherInputRef = useRef(null);
-  
-  const [passportPreview, setPassportPreview] = useState('');
-  const [educationalPreview, setEducationalPreview] = useState('');
-  const [otherPreview, setOtherPreview] = useState('');
-  
+
+  const safeInitialValues = initialValues || {};
+
+  const [passportPreview, setPassportPreview] = useState(existingPreviews.passport || '');
+  const [educationalPreview, setEducationalPreview] = useState(existingPreviews.educational || '');
+  const [otherPreview, setOtherPreview] = useState(existingPreviews.other || '');
+
   const [uploadingPassport, setUploadingPassport] = useState(false);
   const [uploadingEducational, setUploadingEducational] = useState(false);
   const [uploadingOther, setUploadingOther] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [viewFile, setViewFile] = useState({ url: '', name: '', type: '' });
+  const [isHovering, setIsHovering] = useState({ passport: false, educational: false, other: false });
+  const [isSubmittingForm, setIsSubmittingForm] = useState(false);
 
   const courses = [
     "Business Administration and Management BSc",
@@ -67,15 +80,11 @@ export default function StudentForm({ onSubmit, isLoading, initialValues, onClos
     "British", "American", "Vietnamese"
   ];
 
-  // Validation Schema
   const validationSchema = Yup.object().shape({
-    // Course Details
     courseTitle: Yup.string().required('Course Title is required'),
     academicYear: Yup.string()
       .required('Academic Year is required')
       .matches(/^\d{4}$/, 'Academic Year must be a valid year (e.g., 2026)'),
-    
-    // Personal Details
     name: Yup.string().required('Name is required'),
     surname: Yup.string().required('Surname is required'),
     dateOfBirth: Yup.string().required('Date of Birth is required'),
@@ -93,64 +102,54 @@ export default function StudentForm({ onSubmit, isLoading, initialValues, onClos
     issueCountry: Yup.string().required('Issue Country is required'),
     issueDate: Yup.string().required('Issue Date is required'),
     expiryDate: Yup.string().required('Expiry Date is required'),
-    
-    // Emergency Contact
     contactName: Yup.string(),
     contactAddress: Yup.string(),
     contactPhone: Yup.string().required('Contact Phone is required'),
     contactEmail: Yup.string().email('Invalid email'),
     relationship: Yup.string(),
-    
-    // Agency
     agencyName: Yup.string(),
     agencyEmail: Yup.string().email('Invalid email').required('Agency Email is required'),
-    
-    // Privacy Policy
     acceptPrivacy: Yup.boolean().oneOf([true], 'You must accept the Privacy Policy'),
+    passportFile: isEdit ? Yup.mixed().nullable() : Yup.mixed().required('Passport / ID is required'),
+    educationalDocuments: isEdit ? Yup.mixed().nullable() : Yup.mixed().required('Educational Documents are required'),
+    otherDocuments: Yup.mixed().nullable(),
   });
 
   const initialFormValues = {
-    // Course Details
-    courseTitle: initialValues?.courseTitle || '',
-    academicYear: initialValues?.academicYear || '2026',
-    
-    // Personal Details
-    name: initialValues?.name || '',
-    surname: initialValues?.surname || '',
-    dateOfBirth: initialValues?.dateOfBirth || '',
-    gender: initialValues?.gender || '',
-    maritalStatus: initialValues?.maritalStatus || '',
-    email: initialValues?.email || '',
-    telephone: initialValues?.telephone || '',
-    mobile: initialValues?.mobile || '',
-    fullAddress: initialValues?.fullAddress || '',
-    country: initialValues?.country || '',
-    nationality: initialValues?.nationality || '',
-    countryOfResidence: initialValues?.countryOfResidence || '',
-    passportNumber: initialValues?.passportNumber || '',
-    issuePlace: initialValues?.issuePlace || '',
-    issueCountry: initialValues?.issueCountry || '',
-    issueDate: initialValues?.issueDate || '',
-    expiryDate: initialValues?.expiryDate || '',
-    
-    // Emergency Contact
-    contactName: initialValues?.contactName || '',
-    contactAddress: initialValues?.contactAddress || '',
-    contactPhone: initialValues?.contactPhone || '',
-    contactEmail: initialValues?.contactEmail || '',
-    relationship: initialValues?.relationship || '',
-    
-    // Attachments
-    passportFile: initialValues?.passportFile || null,
-    educationalDocuments: initialValues?.educationalDocuments || null,
-    otherDocuments: initialValues?.otherDocuments || null,
-    
-    // Agency
-    agencyName: initialValues?.agencyName || '',
-    agencyEmail: initialValues?.agencyEmail || 'admissions@learnkey.com.mt',
-    
-    // Privacy Policy
-    acceptPrivacy: initialValues?.acceptPrivacy || false,
+    id: safeInitialValues.id || '',
+    courseTitle: safeInitialValues.courseTitle || '',
+    academicYear: safeInitialValues.academicYear || '2026',
+    name: safeInitialValues.name || '',
+    surname: safeInitialValues.surname || '',
+    dateOfBirth: safeInitialValues.dateOfBirth || '',
+    gender: safeInitialValues.gender || '',
+    maritalStatus: safeInitialValues.maritalStatus || '',
+    email: safeInitialValues.email || '',
+    telephone: safeInitialValues.telephone || '',
+    mobile: safeInitialValues.mobile || '',
+    fullAddress: safeInitialValues.fullAddress || '',
+    country: safeInitialValues.country || '',
+    nationality: safeInitialValues.nationality || '',
+    countryOfResidence: safeInitialValues.countryOfResidence || '',
+    passportNumber: safeInitialValues.passportNumber || '',
+    issuePlace: safeInitialValues.issuePlace || '',
+    issueCountry: safeInitialValues.issueCountry || '',
+    issueDate: safeInitialValues.issueDate || '',
+    expiryDate: safeInitialValues.expiryDate || '',
+    contactName: safeInitialValues.contactName || '',
+    contactAddress: safeInitialValues.contactAddress || '',
+    contactPhone: safeInitialValues.contactPhone || '',
+    contactEmail: safeInitialValues.contactEmail || '',
+    relationship: safeInitialValues.relationship || '',
+    passportFile: safeInitialValues.passportFile || null,
+    educationalDocuments: safeInitialValues.educationalDocuments || null,
+    otherDocuments: safeInitialValues.otherDocuments || null,
+    agencyName: safeInitialValues.agencyName || '',
+    agencyEmail: safeInitialValues.agencyEmail || 'admissions@learnkey.com.mt',
+    acceptPrivacy: safeInitialValues.acceptPrivacy || false,
+    passportFileId: safeInitialValues.passportFileId || null,
+    educationalFileId: safeInitialValues.educationalFileId || null,
+    otherFileId: safeInitialValues.otherFileId || null,
   };
 
   useEffect(() => {
@@ -182,24 +181,27 @@ export default function StudentForm({ onSubmit, isLoading, initialValues, onClos
     }
 
     const previewUrl = URL.createObjectURL(file);
-    
+
     try {
       if (fieldName === 'passport') {
         setUploadingPassport(true);
         setPassportPreview(previewUrl);
         setFieldValue('passportFile', file);
+        setFieldValue('passportFileId', null);
       } else if (fieldName === 'educational') {
         setUploadingEducational(true);
         setEducationalPreview(previewUrl);
         setFieldValue('educationalDocuments', file);
+        setFieldValue('educationalFileId', null);
       } else {
         setUploadingOther(true);
         setOtherPreview(previewUrl);
         setFieldValue('otherDocuments', file);
+        setFieldValue('otherFileId', null);
       }
 
       await new Promise(resolve => setTimeout(resolve, 500));
-      
+
     } catch (error) {
       console.error('Upload error:', error);
       alert('Failed to upload file. Please try again.');
@@ -238,6 +240,7 @@ export default function StudentForm({ onSubmit, isLoading, initialValues, onClos
       }
       setPassportPreview('');
       setFieldValue('passportFile', null);
+      setFieldValue('passportFileId', null);
       if (passportInputRef.current) passportInputRef.current.value = '';
     } else if (fieldName === 'educational') {
       if (educationalPreview && educationalPreview.startsWith('blob:')) {
@@ -245,6 +248,7 @@ export default function StudentForm({ onSubmit, isLoading, initialValues, onClos
       }
       setEducationalPreview('');
       setFieldValue('educationalDocuments', null);
+      setFieldValue('educationalFileId', null);
       if (educationalInputRef.current) educationalInputRef.current.value = '';
     } else {
       if (otherPreview && otherPreview.startsWith('blob:')) {
@@ -252,6 +256,7 @@ export default function StudentForm({ onSubmit, isLoading, initialValues, onClos
       }
       setOtherPreview('');
       setFieldValue('otherDocuments', null);
+      setFieldValue('otherFileId', null);
       if (otherInputRef.current) otherInputRef.current.value = '';
     }
   };
@@ -267,12 +272,16 @@ export default function StudentForm({ onSubmit, isLoading, initialValues, onClos
 
     if (preview) {
       return (
-        <div className="relative w-full h-32 rounded-xl overflow-hidden border-2 border-gray-200 bg-gray-50 group">
+        <div 
+          className="relative w-full h-32 rounded-xl overflow-hidden border-2 border-gray-200 bg-gray-50 group"
+          onMouseEnter={() => setIsHovering(prev => ({ ...prev, [fieldName]: true }))}
+          onMouseLeave={() => setIsHovering(prev => ({ ...prev, [fieldName]: false }))}
+        >
           {isImage ? (
-            <img 
-              src={preview} 
-              className="w-full h-full object-cover" 
-              alt={fieldName} 
+            <img
+              src={preview}
+              className="w-full h-full object-cover"
+              alt={fieldName}
             />
           ) : (
             <div className="w-full h-full flex flex-col items-center justify-center bg-gray-100 p-2">
@@ -282,32 +291,35 @@ export default function StudentForm({ onSubmit, isLoading, initialValues, onClos
               </span>
             </div>
           )}
-          
+
           {uploading && (
             <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
               <Loader2 className="h-6 w-6 text-white animate-spin" />
             </div>
           )}
-          
-          {/* Action Buttons Overlay */}
-          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center gap-2">
-            <button
-              type="button"
-              onClick={() => handleViewFile(preview, fieldName, isImage ? 'image' : 'pdf')}
-              className="p-2 bg-white rounded-lg hover:bg-gray-100 transition-colors text-gray-700"
-              title="View File"
-            >
-              <Eye className="w-4 h-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => handleRemoveFile(setFieldValue, fieldName)}
-              disabled={uploading}
-              className="p-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50"
-              title="Remove File"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
+          <button
+            type="button"
+            onClick={() => handleRemoveFile(setFieldValue, fieldName)}
+            disabled={uploading}
+            className="absolute top-2 right-2 p-1.5 bg-red-500 rounded-full hover:bg-red-600 transition-all duration-200 text-white shadow-lg z-10 disabled:opacity-50 hover:scale-110"
+            title="Remove File"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleViewFile(preview, fieldName, isImage ? 'image' : 'pdf')}
+            className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 p-2.5 bg-white/90 rounded-full hover:bg-white transition-all duration-200 text-gray-700 shadow-lg hover:scale-110 ${
+              isHovering[fieldName] ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+            }`}
+            title="View File"
+          >
+            <Eye className="w-5 h-5" />
+          </button>
+
+          <div className="absolute bottom-0 left-0 right-0 bg-black/60 backdrop-blur-sm px-2 py-1">
+            <p className="text-white text-xs truncate">{fileName}</p>
           </div>
         </div>
       );
@@ -333,41 +345,230 @@ export default function StudentForm({ onSubmit, isLoading, initialValues, onClos
     );
   };
 
-  const handleSubmit = async (values, { resetForm, setSubmitting }) => {
+  const uploadFile = async (file) => {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const response = await fetch("/api/upload", {
+      method: "POST",
+      body: formData,
+    });
+
+    const result = await response.json();
+    
+    if (!result.success) {
+      throw new Error(result.message || "File upload failed");
+    }
+
+    return result.data;
+  };
+
+  const createStudent = async (payload) => {
+    console.log('=== SENDING STUDENT DATA ===');
+    console.log('payload:', payload);
+    
+    let userId = 'system';
     try {
-      await onSubmit(values);
-      if (!initialValues) {
-        resetForm();
-        setPassportPreview('');
-        setEducationalPreview('');
-        setOtherPreview('');
-        setSubmitSuccess(true);
-        setTimeout(() => {
-          setSubmitSuccess(false);
-          if (onClose && !isInline) onClose();
-        }, 2000);
+      const userStr = localStorage.getItem('user');
+      if (userStr) {
+        const user = JSON.parse(userStr);
+        userId = user.id || 'system';
       }
     } catch (error) {
-      console.error(error);
-    } finally {
-      setSubmitting(false);
+      console.error('Error getting user from localStorage:', error);
     }
+    
+    console.log('Sending with userId:', userId);
+    
+    const response = await fetch("/api/students", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-user-id": userId
+      },
+      body: JSON.stringify(payload)
+    });
+
+    const result = await response.json();
+
+    if (response.status === 409) {
+      throw new Error(result.message || "Student with this email already exists!");
+    }
+
+    if (!response.ok) {
+      throw new Error(result.message || "Student creation failed");
+    }
+
+    return result;
   };
+
+  const updateStudent = async (payload) => {
+    let userId = 'system';
+    try {
+      const userStr = localStorage.getItem('user');
+      if (userStr) {
+        const user = JSON.parse(userStr);
+        userId = user.id || 'system';
+      }
+    } catch (error) {
+      console.error('Error getting user from localStorage:', error);
+    }
+    
+    console.log('Updating with userId:', userId);
+    
+    const response = await fetch("/api/students", {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "x-user-id": userId
+      },
+      body: JSON.stringify(payload)
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        result.message || "Student update failed"
+      );
+    }
+
+    return result;
+  };
+
+ const handleSubmit = async (values, { setSubmitting }) => {
+  if (isSubmittingForm) {
+    console.log('Form already submitting, skipping...');
+    return;
+  }
+  
+  setIsSubmittingForm(true);
+  
+  try {
+    let passportFileId = null;
+    let educationalFileId = null;
+    let otherFileId = null;
+
+    const existingPassportId = values.passportFileId || safeInitialValues.passportFileId || null;
+    const existingEducationalId = values.educationalFileId || safeInitialValues.educationalFileId || null;
+    const existingOtherId = values.otherFileId || safeInitialValues.otherFileId || null;
+
+    if (values.passportFile && values.passportFile instanceof File) {
+      const uploadedPassport = await uploadFile(values.passportFile);
+      passportFileId = uploadedPassport.id;
+    } else if (isEdit && existingPassportId && passportPreview) {
+      passportFileId = existingPassportId;
+    }
+
+    if (values.educationalDocuments && values.educationalDocuments instanceof File) {
+      const uploadedEducation = await uploadFile(values.educationalDocuments);
+      educationalFileId = uploadedEducation.id;
+    } else if (isEdit && existingEducationalId && educationalPreview) {
+      educationalFileId = existingEducationalId;
+    }
+
+    if (values.otherDocuments && values.otherDocuments instanceof File) {
+      const uploadedOther = await uploadFile(values.otherDocuments);
+      otherFileId = uploadedOther.id;
+    } else if (isEdit && existingOtherId && otherPreview) {
+      otherFileId = existingOtherId;
+    }
+
+    let companyId = null;
+    try {
+      const userStr = localStorage.getItem('user');
+      if (userStr) {
+        const user = JSON.parse(userStr);
+        
+        if (user.role === 'superadmin') {
+          companyId = values.companyId || null;
+        } else if (user.role === 'admin') {
+          companyId = user.companyId || null;
+        }
+      }
+    } catch (error) {
+      console.error('Error getting user data:', error);
+    }
+
+    if (!companyId || companyId === '' || companyId === 'null' || companyId === 'undefined') {
+      companyId = null;
+    }
+
+    console.log('Final companyId:', companyId, 'Type:', typeof companyId);
+
+    const studentPayload = {
+      name: values.name,
+      surname: values.surname,
+      email: values.email,
+      course: values.courseTitle,
+      academicYear: values.academicYear,
+      nationality: values.nationality,
+      phone: values.telephone,
+      mobile: values.mobile,
+      country: values.country,
+      countryOfResidence: values.countryOfResidence,
+      fullAddress: values.fullAddress,
+      dateOfBirth: values.dateOfBirth,
+      gender: values.gender,
+      maritalStatus: values.maritalStatus,
+      passportNumber: values.passportNumber,
+      issuePlace: values.issuePlace,
+      issueCountry: values.issueCountry,
+      issueDate: values.issueDate,
+      expiryDate: values.expiryDate,
+      contactName: values.contactName,
+      contactAddress: values.contactAddress,
+      contactPhone: values.contactPhone,
+      contactEmail: values.contactEmail,
+      relationship: values.relationship,
+      agencyName: values.agencyName,
+      agencyEmail: values.agencyEmail,
+      acceptPrivacy: values.acceptPrivacy,
+      passportFileId: passportFileId,
+      educationalFileId: educationalFileId,
+      otherFileId: otherFileId,
+      companyId: companyId,
+    };
+
+    console.log('Sending student payload with companyId:', studentPayload.companyId);
+
+    if (isEdit) {
+      const studentId = values.id || safeInitialValues.id;
+      if (!studentId) {
+        throw new Error("Student ID is missing for update");
+      }
+      studentPayload.id = studentId;
+      await updateStudent(studentPayload);
+    } else {
+      await createStudent(studentPayload);
+    }
+
+    setSubmitSuccess(true);
+    setSubmitting(false);
+
+     toast.success(isEdit ? "Student updated successfully!" : "Student added successfully!");
+  } catch (error) {
+    console.error('Error in handleSubmit:', error);
+    alert(error.message || "An error occurred while saving the student");
+    setSubmitting(false);
+  } finally {
+    setIsSubmittingForm(false);
+  }
+};
 
   const isUploading = uploadingPassport || uploadingEducational || uploadingOther;
 
-  // File View Modal
   const renderViewModal = () => {
     if (!viewModalOpen) return null;
-    
+
     const isImage = viewFile.type === 'image';
-    
+
     return (
-      <div 
+      <div
         className="fixed inset-0 bg-black/70 backdrop-blur-sm z-60 flex items-center justify-center p-4"
         onClick={() => setViewModalOpen(false)}
       >
-        <div 
+        <div
           className="bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden"
           onClick={(e) => e.stopPropagation()}
         >
@@ -384,8 +585,8 @@ export default function StudentForm({ onSubmit, isLoading, initialValues, onClos
           </div>
           <div className="p-4 flex items-center justify-center bg-gray-50 min-h-[200] max-h-[70vh] overflow-auto">
             {isImage ? (
-              <img 
-                src={viewFile.url} 
+              <img
+                src={viewFile.url}
                 alt={viewFile.name}
                 className="max-w-full max-h-[65vh] object-contain rounded-lg"
               />
@@ -441,7 +642,6 @@ export default function StudentForm({ onSubmit, isLoading, initialValues, onClos
     );
   }
 
-  // If inline, render without overlay
   if (isInline) {
     return (
       <div className="w-full">
@@ -461,7 +661,7 @@ export default function StudentForm({ onSubmit, isLoading, initialValues, onClos
                   <div>
                     <p className="text-sm font-medium text-yellow-800">VERY IMPORTANT</p>
                     <p className="text-sm text-yellow-700">
-                      Input exactly as shown in passport/ID document. Incorrect information in this section 
+                      Input exactly as shown in passport/ID document. Incorrect information in this section
                       may result in your application being canceled.
                     </p>
                   </div>
@@ -473,7 +673,7 @@ export default function StudentForm({ onSubmit, isLoading, initialValues, onClos
                 <h3 className="text-lg font-semibold text-gray-800 border-b border-gray-200 pb-2">
                   COURSE DETAILS
                 </h3>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Course Title <span className="text-red-500">*</span>
@@ -481,9 +681,8 @@ export default function StudentForm({ onSubmit, isLoading, initialValues, onClos
                   <Field
                     as="select"
                     name="courseTitle"
-                    className={`w-full px-4 py-2.5 rounded-xl border ${
-                      touched.courseTitle && errors.courseTitle ? 'border-red-500' : 'border-gray-200'
-                    } focus:ring-2 focus:ring-teal-400/60 focus:border-transparent outline-none transition-all`}
+                    className={`w-full px-4 py-2.5 rounded-xl border ${touched.courseTitle && errors.courseTitle ? 'border-red-500' : 'border-gray-200'
+                      } focus:ring-2 focus:ring-teal-400/60 focus:border-transparent outline-none transition-all`}
                   >
                     <option value="">Select a course</option>
                     {courses.map((course) => (
@@ -501,9 +700,8 @@ export default function StudentForm({ onSubmit, isLoading, initialValues, onClos
                     type="text"
                     name="academicYear"
                     placeholder="e.g. 2026"
-                    className={`w-full px-4 py-2.5 rounded-xl border ${
-                      touched.academicYear && errors.academicYear ? 'border-red-500' : 'border-gray-200'
-                    } focus:ring-2 focus:ring-teal-400/60 focus:border-transparent outline-none transition-all`}
+                    className={`w-full px-4 py-2.5 rounded-xl border ${touched.academicYear && errors.academicYear ? 'border-red-500' : 'border-gray-200'
+                      } focus:ring-2 focus:ring-teal-400/60 focus:border-transparent outline-none transition-all`}
                   />
                   <ErrorMessage name="academicYear" component="div" className="mt-1 text-sm text-red-500" />
                   <p className="mt-1 text-xs text-gray-400">Enter the academic year (e.g., 2026)</p>
@@ -526,9 +724,8 @@ export default function StudentForm({ onSubmit, isLoading, initialValues, onClos
                       type="text"
                       name="name"
                       placeholder="e.g. John"
-                      className={`w-full px-4 py-2.5 rounded-xl border ${
-                        touched.name && errors.name ? 'border-red-500' : 'border-gray-200'
-                      } focus:ring-2 focus:ring-teal-400/60 focus:border-transparent outline-none transition-all`}
+                      className={`w-full px-4 py-2.5 rounded-xl border ${touched.name && errors.name ? 'border-red-500' : 'border-gray-200'
+                        } focus:ring-2 focus:ring-teal-400/60 focus:border-transparent outline-none transition-all`}
                     />
                     <ErrorMessage name="name" component="div" className="mt-1 text-sm text-red-500" />
                   </div>
@@ -541,9 +738,8 @@ export default function StudentForm({ onSubmit, isLoading, initialValues, onClos
                       type="text"
                       name="surname"
                       placeholder="e.g. Lenon"
-                      className={`w-full px-4 py-2.5 rounded-xl border ${
-                        touched.surname && errors.surname ? 'border-red-500' : 'border-gray-200'
-                      } focus:ring-2 focus:ring-teal-400/60 focus:border-transparent outline-none transition-all`}
+                      className={`w-full px-4 py-2.5 rounded-xl border ${touched.surname && errors.surname ? 'border-red-500' : 'border-gray-200'
+                        } focus:ring-2 focus:ring-teal-400/60 focus:border-transparent outline-none transition-all`}
                     />
                     <ErrorMessage name="surname" component="div" className="mt-1 text-sm text-red-500" />
                   </div>
@@ -555,9 +751,8 @@ export default function StudentForm({ onSubmit, isLoading, initialValues, onClos
                     <Field
                       type="date"
                       name="dateOfBirth"
-                      className={`w-full px-4 py-2.5 rounded-xl border ${
-                        touched.dateOfBirth && errors.dateOfBirth ? 'border-red-500' : 'border-gray-200'
-                      } focus:ring-2 focus:ring-teal-400/60 focus:border-transparent outline-none transition-all`}
+                      className={`w-full px-4 py-2.5 rounded-xl border ${touched.dateOfBirth && errors.dateOfBirth ? 'border-red-500' : 'border-gray-200'
+                        } focus:ring-2 focus:ring-teal-400/60 focus:border-transparent outline-none transition-all`}
                     />
                     <ErrorMessage name="dateOfBirth" component="div" className="mt-1 text-sm text-red-500" />
                   </div>
@@ -603,9 +798,8 @@ export default function StudentForm({ onSubmit, isLoading, initialValues, onClos
                     <Field
                       type="email"
                       name="email"
-                      className={`w-full px-4 py-2.5 rounded-xl border ${
-                        touched.email && errors.email ? 'border-red-500' : 'border-gray-200'
-                      } focus:ring-2 focus:ring-teal-400/60 focus:border-transparent outline-none transition-all`}
+                      className={`w-full px-4 py-2.5 rounded-xl border ${touched.email && errors.email ? 'border-red-500' : 'border-gray-200'
+                        } focus:ring-2 focus:ring-teal-400/60 focus:border-transparent outline-none transition-all`}
                     />
                     <ErrorMessage name="email" component="div" className="mt-1 text-sm text-red-500" />
                   </div>
@@ -628,9 +822,8 @@ export default function StudentForm({ onSubmit, isLoading, initialValues, onClos
                     <Field
                       type="tel"
                       name="mobile"
-                      className={`w-full px-4 py-2.5 rounded-xl border ${
-                        touched.mobile && errors.mobile ? 'border-red-500' : 'border-gray-200'
-                      } focus:ring-2 focus:ring-teal-400/60 focus:border-transparent outline-none transition-all`}
+                      className={`w-full px-4 py-2.5 rounded-xl border ${touched.mobile && errors.mobile ? 'border-red-500' : 'border-gray-200'
+                        } focus:ring-2 focus:ring-teal-400/60 focus:border-transparent outline-none transition-all`}
                     />
                     <ErrorMessage name="mobile" component="div" className="mt-1 text-sm text-red-500" />
                   </div>
@@ -643,9 +836,8 @@ export default function StudentForm({ onSubmit, isLoading, initialValues, onClos
                       as="textarea"
                       name="fullAddress"
                       rows="2"
-                      className={`w-full px-4 py-2.5 rounded-xl border ${
-                        touched.fullAddress && errors.fullAddress ? 'border-red-500' : 'border-gray-200'
-                      } focus:ring-2 focus:ring-teal-400/60 focus:border-transparent outline-none transition-all`}
+                      className={`w-full px-4 py-2.5 rounded-xl border ${touched.fullAddress && errors.fullAddress ? 'border-red-500' : 'border-gray-200'
+                        } focus:ring-2 focus:ring-teal-400/60 focus:border-transparent outline-none transition-all`}
                     />
                     <ErrorMessage name="fullAddress" component="div" className="mt-1 text-sm text-red-500" />
                   </div>
@@ -657,9 +849,8 @@ export default function StudentForm({ onSubmit, isLoading, initialValues, onClos
                     <Field
                       as="select"
                       name="country"
-                      className={`w-full px-4 py-2.5 rounded-xl border ${
-                        touched.country && errors.country ? 'border-red-500' : 'border-gray-200'
-                      } focus:ring-2 focus:ring-teal-400/60 focus:border-transparent outline-none transition-all`}
+                      className={`w-full px-4 py-2.5 rounded-xl border ${touched.country && errors.country ? 'border-red-500' : 'border-gray-200'
+                        } focus:ring-2 focus:ring-teal-400/60 focus:border-transparent outline-none transition-all`}
                     >
                       <option value="">None</option>
                       {countries.map((country) => (
@@ -676,9 +867,8 @@ export default function StudentForm({ onSubmit, isLoading, initialValues, onClos
                     <Field
                       as="select"
                       name="nationality"
-                      className={`w-full px-4 py-2.5 rounded-xl border ${
-                        touched.nationality && errors.nationality ? 'border-red-500' : 'border-gray-200'
-                      } focus:ring-2 focus:ring-teal-400/60 focus:border-transparent outline-none transition-all`}
+                      className={`w-full px-4 py-2.5 rounded-xl border ${touched.nationality && errors.nationality ? 'border-red-500' : 'border-gray-200'
+                        } focus:ring-2 focus:ring-teal-400/60 focus:border-transparent outline-none transition-all`}
                     >
                       <option value="">Select Nationality</option>
                       {nationalities.map((nationality) => (
@@ -695,9 +885,8 @@ export default function StudentForm({ onSubmit, isLoading, initialValues, onClos
                     <Field
                       as="select"
                       name="countryOfResidence"
-                      className={`w-full px-4 py-2.5 rounded-xl border ${
-                        touched.countryOfResidence && errors.countryOfResidence ? 'border-red-500' : 'border-gray-200'
-                      } focus:ring-2 focus:ring-teal-400/60 focus:border-transparent outline-none transition-all`}
+                      className={`w-full px-4 py-2.5 rounded-xl border ${touched.countryOfResidence && errors.countryOfResidence ? 'border-red-500' : 'border-gray-200'
+                        } focus:ring-2 focus:ring-teal-400/60 focus:border-transparent outline-none transition-all`}
                     >
                       <option value="">None</option>
                       {countries.map((country) => (
@@ -714,9 +903,8 @@ export default function StudentForm({ onSubmit, isLoading, initialValues, onClos
                     <Field
                       type="text"
                       name="passportNumber"
-                      className={`w-full px-4 py-2.5 rounded-xl border ${
-                        touched.passportNumber && errors.passportNumber ? 'border-red-500' : 'border-gray-200'
-                      } focus:ring-2 focus:ring-teal-400/60 focus:border-transparent outline-none transition-all`}
+                      className={`w-full px-4 py-2.5 rounded-xl border ${touched.passportNumber && errors.passportNumber ? 'border-red-500' : 'border-gray-200'
+                        } focus:ring-2 focus:ring-teal-400/60 focus:border-transparent outline-none transition-all`}
                     />
                     <ErrorMessage name="passportNumber" component="div" className="mt-1 text-sm text-red-500" />
                   </div>
@@ -728,9 +916,8 @@ export default function StudentForm({ onSubmit, isLoading, initialValues, onClos
                     <Field
                       type="text"
                       name="issuePlace"
-                      className={`w-full px-4 py-2.5 rounded-xl border ${
-                        touched.issuePlace && errors.issuePlace ? 'border-red-500' : 'border-gray-200'
-                      } focus:ring-2 focus:ring-teal-400/60 focus:border-transparent outline-none transition-all`}
+                      className={`w-full px-4 py-2.5 rounded-xl border ${touched.issuePlace && errors.issuePlace ? 'border-red-500' : 'border-gray-200'
+                        } focus:ring-2 focus:ring-teal-400/60 focus:border-transparent outline-none transition-all`}
                     />
                     <ErrorMessage name="issuePlace" component="div" className="mt-1 text-sm text-red-500" />
                   </div>
@@ -742,9 +929,8 @@ export default function StudentForm({ onSubmit, isLoading, initialValues, onClos
                     <Field
                       as="select"
                       name="issueCountry"
-                      className={`w-full px-4 py-2.5 rounded-xl border ${
-                        touched.issueCountry && errors.issueCountry ? 'border-red-500' : 'border-gray-200'
-                      } focus:ring-2 focus:ring-teal-400/60 focus:border-transparent outline-none transition-all`}
+                      className={`w-full px-4 py-2.5 rounded-xl border ${touched.issueCountry && errors.issueCountry ? 'border-red-500' : 'border-gray-200'
+                        } focus:ring-2 focus:ring-teal-400/60 focus:border-transparent outline-none transition-all`}
                     >
                       <option value="">None</option>
                       {countries.map((country) => (
@@ -761,9 +947,8 @@ export default function StudentForm({ onSubmit, isLoading, initialValues, onClos
                     <Field
                       type="date"
                       name="issueDate"
-                      className={`w-full px-4 py-2.5 rounded-xl border ${
-                        touched.issueDate && errors.issueDate ? 'border-red-500' : 'border-gray-200'
-                      } focus:ring-2 focus:ring-teal-400/60 focus:border-transparent outline-none transition-all`}
+                      className={`w-full px-4 py-2.5 rounded-xl border ${touched.issueDate && errors.issueDate ? 'border-red-500' : 'border-gray-200'
+                        } focus:ring-2 focus:ring-teal-400/60 focus:border-transparent outline-none transition-all`}
                     />
                     <ErrorMessage name="issueDate" component="div" className="mt-1 text-sm text-red-500" />
                   </div>
@@ -775,9 +960,8 @@ export default function StudentForm({ onSubmit, isLoading, initialValues, onClos
                     <Field
                       type="date"
                       name="expiryDate"
-                      className={`w-full px-4 py-2.5 rounded-xl border ${
-                        touched.expiryDate && errors.expiryDate ? 'border-red-500' : 'border-gray-200'
-                      } focus:ring-2 focus:ring-teal-400/60 focus:border-transparent outline-none transition-all`}
+                      className={`w-full px-4 py-2.5 rounded-xl border ${touched.expiryDate && errors.expiryDate ? 'border-red-500' : 'border-gray-200'
+                        } focus:ring-2 focus:ring-teal-400/60 focus:border-transparent outline-none transition-all`}
                     />
                     <ErrorMessage name="expiryDate" component="div" className="mt-1 text-sm text-red-500" />
                   </div>
@@ -820,9 +1004,8 @@ export default function StudentForm({ onSubmit, isLoading, initialValues, onClos
                     <Field
                       type="tel"
                       name="contactPhone"
-                      className={`w-full px-4 py-2.5 rounded-xl border ${
-                        touched.contactPhone && errors.contactPhone ? 'border-red-500' : 'border-gray-200'
-                      } focus:ring-2 focus:ring-teal-400/60 focus:border-transparent outline-none transition-all`}
+                      className={`w-full px-4 py-2.5 rounded-xl border ${touched.contactPhone && errors.contactPhone ? 'border-red-500' : 'border-gray-200'
+                        } focus:ring-2 focus:ring-teal-400/60 focus:border-transparent outline-none transition-all`}
                     />
                     <ErrorMessage name="contactPhone" component="div" className="mt-1 text-sm text-red-500" />
                   </div>
@@ -862,7 +1045,7 @@ export default function StudentForm({ onSubmit, isLoading, initialValues, onClos
                   {/* Passport/ID Upload */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Passport / ID <span className="text-red-500">*</span>
+                      Passport / ID {!isEdit && <span className="text-red-500">*</span>}
                     </label>
                     <input
                       id="file-upload-passport"
@@ -874,13 +1057,13 @@ export default function StudentForm({ onSubmit, isLoading, initialValues, onClos
                       disabled={uploadingPassport}
                     />
                     {renderFilePreview(passportPreview, uploadingPassport, 'passport', setFieldValue)}
-                    <ErrorMessage name="passportFile" component="div" className="mt-1 text-sm text-red-500" />
+                    {!isEdit && <ErrorMessage name="passportFile" component="div" className="mt-1 text-sm text-red-500" />}
                   </div>
 
                   {/* Educational Documents Upload */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Educational Documents <span className="text-red-500">*</span>
+                      Educational Documents {!isEdit && <span className="text-red-500">*</span>}
                     </label>
                     <input
                       id="file-upload-educational"
@@ -892,7 +1075,7 @@ export default function StudentForm({ onSubmit, isLoading, initialValues, onClos
                       disabled={uploadingEducational}
                     />
                     {renderFilePreview(educationalPreview, uploadingEducational, 'educational', setFieldValue)}
-                    <ErrorMessage name="educationalDocuments" component="div" className="mt-1 text-sm text-red-500" />
+                    {!isEdit && <ErrorMessage name="educationalDocuments" component="div" className="mt-1 text-sm text-red-500" />}
                   </div>
 
                   {/* Other Documents Upload */}
@@ -954,9 +1137,8 @@ export default function StudentForm({ onSubmit, isLoading, initialValues, onClos
                     <Field
                       type="email"
                       name="agencyEmail"
-                      className={`w-full px-4 py-2.5 rounded-xl border ${
-                        touched.agencyEmail && errors.agencyEmail ? 'border-red-500' : 'border-gray-200'
-                      } focus:ring-2 focus:ring-teal-400/60 focus:border-transparent outline-none transition-all`}
+                      className={`w-full px-4 py-2.5 rounded-xl border ${touched.agencyEmail && errors.agencyEmail ? 'border-red-500' : 'border-gray-200'
+                        } focus:ring-2 focus:ring-teal-400/60 focus:border-transparent outline-none transition-all`}
                     />
                     <ErrorMessage name="agencyEmail" component="div" className="mt-1 text-sm text-red-500" />
                   </div>
@@ -984,11 +1166,11 @@ export default function StudentForm({ onSubmit, isLoading, initialValues, onClos
               <div className="flex gap-3 pt-4 border-t border-gray-200">
                 <button
                   type="submit"
-                  disabled={isLoading || isSubmitting || isUploading}
+                  disabled={isLoading || isSubmitting || isUploading || isSubmittingForm}
                   className="flex-1 bg-teal-600 text-white py-3 px-4 rounded-xl hover:bg-teal-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
                 >
-                  {(isLoading || isSubmitting) && <Loader2 className="h-4 w-4 animate-spin" />}
-                  {(isLoading || isSubmitting) ? 'Submitting...' : 'Submit Application'}
+                  {(isLoading || isSubmitting || isSubmittingForm) && <Loader2 className="h-4 w-4 animate-spin" />}
+                  {(isLoading || isSubmitting || isSubmittingForm) ? 'Saving...' : (isEdit ? 'Update Application' : 'Submit Application')}
                 </button>
                 <button
                   type="button"
@@ -1005,11 +1187,9 @@ export default function StudentForm({ onSubmit, isLoading, initialValues, onClos
     );
   }
 
-  // Original modal version (kept for backward compatibility)
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-        {/* Header */}
         <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between z-10 rounded-t-3xl">
           <div>
             <h2 className="text-2xl font-bold text-gray-800">Non-EU Student Application</h2>
@@ -1024,7 +1204,6 @@ export default function StudentForm({ onSubmit, isLoading, initialValues, onClos
           </button>
         </div>
 
-        {/* Form Content */}
         {renderViewModal()}
         <Formik
           initialValues={initialFormValues}
@@ -1034,541 +1213,15 @@ export default function StudentForm({ onSubmit, isLoading, initialValues, onClos
         >
           {({ setFieldValue, values, errors, touched, isSubmitting }) => (
             <Form className="p-6 space-y-8">
-              {/* Important Notice */}
-              <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
-                <div className="flex items-start gap-3">
-                  <AlertCircle className="text-yellow-600 shrink-0 mt-0.5" size={20} />
-                  <div>
-                    <p className="text-sm font-medium text-yellow-800">VERY IMPORTANT</p>
-                    <p className="text-sm text-yellow-700">
-                      Input exactly as shown in passport/ID document. Incorrect information in this section 
-                      may result in your application being canceled.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* 1. COURSE DETAILS */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-gray-800 border-b border-gray-200 pb-2">
-                  COURSE DETAILS
-                </h3>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Course Title <span className="text-red-500">*</span>
-                  </label>
-                  <Field
-                    as="select"
-                    name="courseTitle"
-                    className={`w-full px-4 py-2.5 rounded-xl border ${
-                      touched.courseTitle && errors.courseTitle ? 'border-red-500' : 'border-gray-200'
-                    } focus:ring-2 focus:ring-teal-400/60 focus:border-transparent outline-none transition-all`}
-                  >
-                    <option value="">Select a course</option>
-                    {courses.map((course) => (
-                      <option key={course} value={course}>{course}</option>
-                    ))}
-                  </Field>
-                  <ErrorMessage name="courseTitle" component="div" className="mt-1 text-sm text-red-500" />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Academic Year <span className="text-red-500">*</span>
-                  </label>
-                  <Field
-                    type="text"
-                    name="academicYear"
-                    placeholder="e.g. 2026"
-                    className={`w-full px-4 py-2.5 rounded-xl border ${
-                      touched.academicYear && errors.academicYear ? 'border-red-500' : 'border-gray-200'
-                    } focus:ring-2 focus:ring-teal-400/60 focus:border-transparent outline-none transition-all`}
-                  />
-                  <ErrorMessage name="academicYear" component="div" className="mt-1 text-sm text-red-500" />
-                  <p className="mt-1 text-xs text-gray-400">Enter the academic year (e.g., 2026)</p>
-                </div>
-              </div>
-
-              {/* 2. PERSONAL DETAILS */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-gray-800 border-b border-gray-200 pb-2">
-                  PERSONAL DETAILS
-                </h3>
-                <p className="text-sm text-gray-500">Exactly as shown in passport/ID document</p>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Name <span className="text-red-500">*</span>
-                    </label>
-                    <Field
-                      type="text"
-                      name="name"
-                      placeholder="e.g. John"
-                      className={`w-full px-4 py-2.5 rounded-xl border ${
-                        touched.name && errors.name ? 'border-red-500' : 'border-gray-200'
-                      } focus:ring-2 focus:ring-teal-400/60 focus:border-transparent outline-none transition-all`}
-                    />
-                    <ErrorMessage name="name" component="div" className="mt-1 text-sm text-red-500" />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Surname <span className="text-red-500">*</span>
-                    </label>
-                    <Field
-                      type="text"
-                      name="surname"
-                      placeholder="e.g. Lenon"
-                      className={`w-full px-4 py-2.5 rounded-xl border ${
-                        touched.surname && errors.surname ? 'border-red-500' : 'border-gray-200'
-                      } focus:ring-2 focus:ring-teal-400/60 focus:border-transparent outline-none transition-all`}
-                    />
-                    <ErrorMessage name="surname" component="div" className="mt-1 text-sm text-red-500" />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Date of Birth <span className="text-red-500">*</span>
-                    </label>
-                    <Field
-                      type="date"
-                      name="dateOfBirth"
-                      className={`w-full px-4 py-2.5 rounded-xl border ${
-                        touched.dateOfBirth && errors.dateOfBirth ? 'border-red-500' : 'border-gray-200'
-                      } focus:ring-2 focus:ring-teal-400/60 focus:border-transparent outline-none transition-all`}
-                    />
-                    <ErrorMessage name="dateOfBirth" component="div" className="mt-1 text-sm text-red-500" />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Gender <span className="text-red-500">*</span>
-                    </label>
-                    <div className="flex gap-4 pt-2">
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <Field type="radio" name="gender" value="Male" className="w-4 h-4 text-teal-600" />
-                        Male
-                      </label>
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <Field type="radio" name="gender" value="Female" className="w-4 h-4 text-teal-600" />
-                        Female
-                      </label>
-                    </div>
-                    <ErrorMessage name="gender" component="div" className="mt-1 text-sm text-red-500" />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Marital Status <span className="text-red-500">*</span>
-                    </label>
-                    <div className="flex gap-4 pt-2">
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <Field type="radio" name="maritalStatus" value="Single" className="w-4 h-4 text-teal-600" />
-                        Single
-                      </label>
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <Field type="radio" name="maritalStatus" value="Married" className="w-4 h-4 text-teal-600" />
-                        Married
-                      </label>
-                    </div>
-                    <ErrorMessage name="maritalStatus" component="div" className="mt-1 text-sm text-red-500" />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Email Address <span className="text-red-500">*</span>
-                    </label>
-                    <Field
-                      type="email"
-                      name="email"
-                      className={`w-full px-4 py-2.5 rounded-xl border ${
-                        touched.email && errors.email ? 'border-red-500' : 'border-gray-200'
-                      } focus:ring-2 focus:ring-teal-400/60 focus:border-transparent outline-none transition-all`}
-                    />
-                    <ErrorMessage name="email" component="div" className="mt-1 text-sm text-red-500" />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Telephone
-                    </label>
-                    <Field
-                      type="tel"
-                      name="telephone"
-                      className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-teal-400/60 focus:border-transparent outline-none transition-all"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Mobile <span className="text-red-500">*</span>
-                    </label>
-                    <Field
-                      type="tel"
-                      name="mobile"
-                      className={`w-full px-4 py-2.5 rounded-xl border ${
-                        touched.mobile && errors.mobile ? 'border-red-500' : 'border-gray-200'
-                      } focus:ring-2 focus:ring-teal-400/60 focus:border-transparent outline-none transition-all`}
-                    />
-                    <ErrorMessage name="mobile" component="div" className="mt-1 text-sm text-red-500" />
-                  </div>
-
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Full Address <span className="text-red-500">*</span>
-                    </label>
-                    <Field
-                      as="textarea"
-                      name="fullAddress"
-                      rows="2"
-                      className={`w-full px-4 py-2.5 rounded-xl border ${
-                        touched.fullAddress && errors.fullAddress ? 'border-red-500' : 'border-gray-200'
-                      } focus:ring-2 focus:ring-teal-400/60 focus:border-transparent outline-none transition-all`}
-                    />
-                    <ErrorMessage name="fullAddress" component="div" className="mt-1 text-sm text-red-500" />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Country <span className="text-red-500">*</span>
-                    </label>
-                    <Field
-                      as="select"
-                      name="country"
-                      className={`w-full px-4 py-2.5 rounded-xl border ${
-                        touched.country && errors.country ? 'border-red-500' : 'border-gray-200'
-                      } focus:ring-2 focus:ring-teal-400/60 focus:border-transparent outline-none transition-all`}
-                    >
-                      <option value="">None</option>
-                      {countries.map((country) => (
-                        <option key={country} value={country}>{country}</option>
-                      ))}
-                    </Field>
-                    <ErrorMessage name="country" component="div" className="mt-1 text-sm text-red-500" />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Nationality <span className="text-red-500">*</span>
-                    </label>
-                    <Field
-                      as="select"
-                      name="nationality"
-                      className={`w-full px-4 py-2.5 rounded-xl border ${
-                        touched.nationality && errors.nationality ? 'border-red-500' : 'border-gray-200'
-                      } focus:ring-2 focus:ring-teal-400/60 focus:border-transparent outline-none transition-all`}
-                    >
-                      <option value="">Select Nationality</option>
-                      {nationalities.map((nationality) => (
-                        <option key={nationality} value={nationality}>{nationality}</option>
-                      ))}
-                    </Field>
-                    <ErrorMessage name="nationality" component="div" className="mt-1 text-sm text-red-500" />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Country of Residence <span className="text-red-500">*</span>
-                    </label>
-                    <Field
-                      as="select"
-                      name="countryOfResidence"
-                      className={`w-full px-4 py-2.5 rounded-xl border ${
-                        touched.countryOfResidence && errors.countryOfResidence ? 'border-red-500' : 'border-gray-200'
-                      } focus:ring-2 focus:ring-teal-400/60 focus:border-transparent outline-none transition-all`}
-                    >
-                      <option value="">None</option>
-                      {countries.map((country) => (
-                        <option key={country} value={country}>{country}</option>
-                      ))}
-                    </Field>
-                    <ErrorMessage name="countryOfResidence" component="div" className="mt-1 text-sm text-red-500" />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Passport/ID Number <span className="text-red-500">*</span>
-                    </label>
-                    <Field
-                      type="text"
-                      name="passportNumber"
-                      className={`w-full px-4 py-2.5 rounded-xl border ${
-                        touched.passportNumber && errors.passportNumber ? 'border-red-500' : 'border-gray-200'
-                      } focus:ring-2 focus:ring-teal-400/60 focus:border-transparent outline-none transition-all`}
-                    />
-                    <ErrorMessage name="passportNumber" component="div" className="mt-1 text-sm text-red-500" />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Issue Place <span className="text-red-500">*</span>
-                    </label>
-                    <Field
-                      type="text"
-                      name="issuePlace"
-                      className={`w-full px-4 py-2.5 rounded-xl border ${
-                        touched.issuePlace && errors.issuePlace ? 'border-red-500' : 'border-gray-200'
-                      } focus:ring-2 focus:ring-teal-400/60 focus:border-transparent outline-none transition-all`}
-                    />
-                    <ErrorMessage name="issuePlace" component="div" className="mt-1 text-sm text-red-500" />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Issue Country <span className="text-red-500">*</span>
-                    </label>
-                    <Field
-                      as="select"
-                      name="issueCountry"
-                      className={`w-full px-4 py-2.5 rounded-xl border ${
-                        touched.issueCountry && errors.issueCountry ? 'border-red-500' : 'border-gray-200'
-                      } focus:ring-2 focus:ring-teal-400/60 focus:border-transparent outline-none transition-all`}
-                    >
-                      <option value="">None</option>
-                      {countries.map((country) => (
-                        <option key={country} value={country}>{country}</option>
-                      ))}
-                    </Field>
-                    <ErrorMessage name="issueCountry" component="div" className="mt-1 text-sm text-red-500" />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Issue Date <span className="text-red-500">*</span>
-                    </label>
-                    <Field
-                      type="date"
-                      name="issueDate"
-                      className={`w-full px-4 py-2.5 rounded-xl border ${
-                        touched.issueDate && errors.issueDate ? 'border-red-500' : 'border-gray-200'
-                      } focus:ring-2 focus:ring-teal-400/60 focus:border-transparent outline-none transition-all`}
-                    />
-                    <ErrorMessage name="issueDate" component="div" className="mt-1 text-sm text-red-500" />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Expiry Date <span className="text-red-500">*</span>
-                    </label>
-                    <Field
-                      type="date"
-                      name="expiryDate"
-                      className={`w-full px-4 py-2.5 rounded-xl border ${
-                        touched.expiryDate && errors.expiryDate ? 'border-red-500' : 'border-gray-200'
-                      } focus:ring-2 focus:ring-teal-400/60 focus:border-transparent outline-none transition-all`}
-                    />
-                    <ErrorMessage name="expiryDate" component="div" className="mt-1 text-sm text-red-500" />
-                  </div>
-                </div>
-              </div>
-
-              {/* 3. EMERGENCY CONTACT */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-gray-800 border-b border-gray-200 pb-2">
-                  CONTACT PERSON IN CASE OF EMERGENCY
-                </h3>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Contact Name
-                    </label>
-                    <Field
-                      type="text"
-                      name="contactName"
-                      className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-teal-400/60 focus:border-transparent outline-none transition-all"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Contact Address
-                    </label>
-                    <Field
-                      type="text"
-                      name="contactAddress"
-                      className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-teal-400/60 focus:border-transparent outline-none transition-all"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Contact Phone <span className="text-red-500">*</span>
-                    </label>
-                    <Field
-                      type="tel"
-                      name="contactPhone"
-                      className={`w-full px-4 py-2.5 rounded-xl border ${
-                        touched.contactPhone && errors.contactPhone ? 'border-red-500' : 'border-gray-200'
-                      } focus:ring-2 focus:ring-teal-400/60 focus:border-transparent outline-none transition-all`}
-                    />
-                    <ErrorMessage name="contactPhone" component="div" className="mt-1 text-sm text-red-500" />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Contact Email
-                    </label>
-                    <Field
-                      type="email"
-                      name="contactEmail"
-                      className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-teal-400/60 focus:border-transparent outline-none transition-all"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Relationship to Applicant
-                    </label>
-                    <Field
-                      type="text"
-                      name="relationship"
-                      className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-teal-400/60 focus:border-transparent outline-none transition-all"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* 4. ATTACHMENTS */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-gray-800 border-b border-gray-200 pb-2">
-                  ATTACHMENTS
-                </h3>
-                <p className="text-sm text-gray-500">Maximum 5MB (jpg, jpeg, png, pdf)</p>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {/* Passport/ID Upload */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Passport / ID <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      id="file-upload-passport-modal"
-                      ref={passportInputRef}
-                      type="file"
-                      hidden
-                      accept="image/*,.pdf"
-                      onChange={(e) => handleFileChange(e, setFieldValue, 'passport')}
-                      disabled={uploadingPassport}
-                    />
-                    {renderFilePreview(passportPreview, uploadingPassport, 'passport', setFieldValue)}
-                    <ErrorMessage name="passportFile" component="div" className="mt-1 text-sm text-red-500" />
-                  </div>
-
-                  {/* Educational Documents Upload */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Educational Documents <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      id="file-upload-educational-modal"
-                      ref={educationalInputRef}
-                      type="file"
-                      hidden
-                      accept="image/*,.pdf"
-                      onChange={(e) => handleFileChange(e, setFieldValue, 'educational')}
-                      disabled={uploadingEducational}
-                    />
-                    {renderFilePreview(educationalPreview, uploadingEducational, 'educational', setFieldValue)}
-                    <ErrorMessage name="educationalDocuments" component="div" className="mt-1 text-sm text-red-500" />
-                  </div>
-
-                  {/* Other Documents Upload */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Other Documents
-                    </label>
-                    <input
-                      id="file-upload-other-modal"
-                      ref={otherInputRef}
-                      type="file"
-                      hidden
-                      accept="image/*,.pdf"
-                      onChange={(e) => handleFileChange(e, setFieldValue, 'other')}
-                      disabled={uploadingOther}
-                    />
-                    {renderFilePreview(otherPreview, uploadingOther, 'other', setFieldValue)}
-                  </div>
-                </div>
-
-                <div className="bg-blue-50 border border-blue-200 rounded-xl p-3">
-                  <p className="text-xs text-blue-700">
-                    To minimize your file size, you can use{' '}
-                    <a href="https://tinypng.com/" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
-                      https://tinypng.com/
-                    </a>
-                    {' '}(for images) and{' '}
-                    <a href="https://tools.pdf24.org/en/optimize-pdf" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
-                      https://tools.pdf24.org/en/optimize-pdf
-                    </a>
-                    {' '}(for PDFs)
-                  </p>
-                </div>
-              </div>
-
-              {/* 5. AGENCY DETAILS */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-gray-800 border-b border-gray-200 pb-2">
-                  AGENCY
-                </h3>
-                <p className="text-sm text-gray-500">If you are a student, please input your email address here.</p>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Agency Name
-                    </label>
-                    <Field
-                      type="text"
-                      name="agencyName"
-                      className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-teal-400/60 focus:border-transparent outline-none transition-all"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Agency Email <span className="text-red-500">*</span>
-                    </label>
-                    <Field
-                      type="email"
-                      name="agencyEmail"
-                      className={`w-full px-4 py-2.5 rounded-xl border ${
-                        touched.agencyEmail && errors.agencyEmail ? 'border-red-500' : 'border-gray-200'
-                      } focus:ring-2 focus:ring-teal-400/60 focus:border-transparent outline-none transition-all`}
-                    />
-                    <ErrorMessage name="agencyEmail" component="div" className="mt-1 text-sm text-red-500" />
-                  </div>
-                </div>
-              </div>
-
-              {/* 6. PRIVACY POLICY */}
-              <div className="space-y-4">
-                <div className="flex items-start gap-3">
-                  <Field
-                    type="checkbox"
-                    name="acceptPrivacy"
-                    className="mt-1 w-4 h-4 text-teal-600 border-gray-300 rounded focus:ring-teal-500"
-                  />
-                  <div>
-                    <label className="text-sm text-gray-700">
-                      I accept the <span className="text-teal-600 font-medium">Privacy Policy</span> <span className="text-red-500">*</span>
-                    </label>
-                    <ErrorMessage name="acceptPrivacy" component="div" className="mt-1 text-sm text-red-500" />
-                  </div>
-                </div>
-              </div>
-
               {/* Submit Button */}
               <div className="flex gap-3 pt-4 border-t border-gray-200">
                 <button
                   type="submit"
-                  disabled={isLoading || isSubmitting || isUploading}
+                  disabled={isLoading || isSubmitting || isUploading || isSubmittingForm}
                   className="flex-1 bg-teal-600 text-white py-3 px-4 rounded-xl hover:bg-teal-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
                 >
-                  {(isLoading || isSubmitting) && <Loader2 className="h-4 w-4 animate-spin" />}
-                  {(isLoading || isSubmitting) ? 'Submitting...' : 'Submit Application'}
+                  {(isLoading || isSubmitting || isSubmittingForm) && <Loader2 className="h-4 w-4 animate-spin" />}
+                  {(isLoading || isSubmitting || isSubmittingForm) ? 'Saving...' : (isEdit ? 'Update Application' : 'Submit Application')}
                 </button>
                 <button
                   type="button"

@@ -1,0 +1,83 @@
+{
+  "version": "7",
+  "dialect": "mysql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1783765979094,
+      "tag": "0000_furry_cannonball",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1783769244255,
+      "tag": "0001_typical_meggan",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1783785058201,
+      "tag": "0002_free_vision",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1783786135918,
+      "tag": "0003_needy_puma",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1783791056296,
+      "tag": "0004_broad_the_anarchist",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1783840432963,
+      "tag": "0005_melted_tana_nile",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1783841469208,
+      "tag": "0006_rainy_mister_fear",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "5",
+      "when": 1783847772868,
+      "tag": "0007_volatile_red_shift",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "5",
+      "when": 1783879595604,
+      "tag": "0008_tough_titanium_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "5",
+      "when": 1783930479674,
+      "tag": "0009_lethal_sphinx",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "5",
+      "when": 1783933928179,
+      "tag": "0010_goofy_edwin_jarvis",
+      "breakpoints": true
+    }
+  ]
+}
