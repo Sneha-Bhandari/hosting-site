@@ -3,6 +3,7 @@
 import { Formik, Form, Field, ErrorMessage } from "formik";
 import * as Yup from "yup";
 import { useState } from 'react';
+import toast from "react-hot-toast";
 
 const COUNTRIES = [
   'Cyprus', 'Germany', 'Croatia', 'France', 'New Zealand',
@@ -55,15 +56,55 @@ const GrantAccessSchema = Yup.object().shape({
 export default function GrantAccessModal({ 
   isOpen, 
   onClose, 
-  onSubmit, 
+  onGrantAccess, 
+  companyId,
   companyName,
   initialCountries = [],
   initialUniversities = [],
   initialStudyAreas = []
 }) {
   const [newCountry, setNewCountry] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   if (!isOpen) return null;
+
+  const handleSubmit = async (values) => {
+    try {
+      setIsLoading(true);
+      
+      const response = await fetch(`/api/company/${companyId}/access`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          countries: values.countries,
+          universities: values.universities,
+          studyAreas: values.studyAreas,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message || 'Failed to grant access');
+      }
+
+      toast.success('Access granted successfully!');
+      
+      if (onGrantAccess) {
+        onGrantAccess(values);
+      }
+      
+      onClose();
+      
+    } catch (error) {
+      console.error('Error granting access:', error);
+      toast.error(error.message || 'Failed to grant access');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -81,6 +122,7 @@ export default function GrantAccessModal({
             <button
               onClick={onClose}
               className="text-gray-400 hover:text-gray-600 text-2xl hover:bg-gray-100 rounded-full p-1 transition-colors"
+              disabled={isLoading}
             >
               ×
             </button>
@@ -93,9 +135,7 @@ export default function GrantAccessModal({
               studyAreas: initialStudyAreas,
             }}
             validationSchema={GrantAccessSchema}
-            onSubmit={(values) => {
-              onSubmit(values);
-            }}
+            onSubmit={handleSubmit}
           >
             {({ values, setFieldValue }) => {
               const handleAddCountry = () => {
@@ -151,6 +191,7 @@ export default function GrantAccessModal({
                         value={newCountry}
                         onChange={(e) => setNewCountry(e.target.value)}
                         className="flex-1 rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        disabled={isLoading}
                       >
                         <option value="">Select Country</option>
                         {COUNTRIES.filter(c => !values.countries.includes(c)).map((country) => (
@@ -160,7 +201,7 @@ export default function GrantAccessModal({
                       <button
                         type="button"
                         onClick={handleAddCountry}
-                        disabled={!newCountry}
+                        disabled={!newCountry || isLoading}
                         className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         Add
@@ -205,6 +246,7 @@ export default function GrantAccessModal({
                           }
                         }}
                         className="flex-1 rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        disabled={isLoading}
                       >
                         <option value="">Select University</option>
                         {UNIVERSITIES.filter(u => !values.universities.includes(u)).map((uni) => (
@@ -252,6 +294,7 @@ export default function GrantAccessModal({
                           }
                         }}
                         className="flex-1 rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        disabled={isLoading}
                       >
                         <option value="">Select Study Area</option>
                         {STUDY_AREAS.filter(a => !values.studyAreas.includes(a)).map((area) => (
@@ -262,21 +305,28 @@ export default function GrantAccessModal({
                     <p className="text-xs text-gray-500 mt-1">Select a study area from the dropdown to add</p>
                   </div>
 
-                 
                   {/* Action Buttons */}
                   <div className="flex justify-end space-x-3 pt-4 border-t">
                     <button
                       type="button"
                       onClick={onClose}
                       className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
+                      disabled={isLoading}
                     >
                       Cancel
                     </button>
                     <button
                       type="submit"
-                      className="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+                      disabled={isLoading}
+                      className="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                     >
-                      Grant Access
+                      {isLoading && (
+                        <svg className="animate-spin h-4 w-4 text-white" xmlns="http:www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                      )}
+                      {isLoading ? 'Saving...' : 'Grant Access'}
                     </button>
                   </div>
                 </Form>

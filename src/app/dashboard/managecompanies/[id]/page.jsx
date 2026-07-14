@@ -20,88 +20,6 @@ import AddAdminModal from "@/components/manage-company/AddAdminModal";
 import EditCompanyModal from "@/components/manage-company/EditCompanyModal";
 import toast from "react-hot-toast";
 
-const MOCK_COMPANIES = {
-  1: {
-    id: "1",
-    name: "Raj Education Private Limited",
-    email: "Raaj.Edubutwal@Gmail.Com",
-    contactNumber: "+9779857439227",
-    financialContact: "+9779857439227",
-    address1: "Chauraha",
-    address2: "Butwal",
-    city: "Butwal",
-    country: "Nepal",
-    state: "Lumbini Province",
-    zipCode: "32900",
-    website: "www.rajeducation.com",
-    regionalIncharge: "Sadhana Gautam",
-    createdAt: "2024-01-15",
-    grantedCountries: ["Cyprus", "Germany", "Croatia"],
-    grantedUniversities: ["University of Oxford", "Harvard University"],
-    grantedStudyAreas: ["Computer Science", "Business Administration"],
-    admins: [
-      {
-        id: "a1",
-        firstName: "John",
-        lastName: "Doe",
-        email: "john.doe@rajeducation.com",
-        role: "Admin",
-      },
-    ],
-    documents: ["registration.pdf", "tax_document.pdf"],
-    bankName: "Nepal Bank Limited",
-    accountNumber: "1234567890",
-    swiftCode: "NEPLNPKT",
-  },
-  2: {
-    id: "2",
-    name: "Global Study Solutions",
-    email: "info@globalstudy.com",
-    contactNumber: "+9779812345678",
-    financialContact: "+9779812345678",
-    address1: "Kathmandu",
-    address2: "Lalitpur",
-    city: "Kathmandu",
-    country: "Nepal",
-    state: "Bagmati Province",
-    zipCode: "44600",
-    website: "www.globalstudy.com",
-    regionalIncharge: "Ram Sharma",
-    createdAt: "2024-02-20",
-    grantedCountries: ["France", "New Zealand", "Malaysia"],
-    grantedUniversities: ["Stanford University", "MIT"],
-    grantedStudyAreas: ["Engineering", "Medicine"],
-    admins: [],
-    documents: [],
-    bankName: "",
-    accountNumber: "",
-    swiftCode: "",
-  },
-  3: {
-    id: "3",
-    name: "Elite Education Consultancy",
-    email: "contact@eliteedu.com",
-    contactNumber: "+9779845678901",
-    financialContact: "+9779845678901",
-    address1: "Biratnagar",
-    address2: "Morang",
-    city: "Biratnagar",
-    country: "Nepal",
-    state: "Province No. 1",
-    zipCode: "56613",
-    website: "www.eliteedu.com",
-    regionalIncharge: "Sita Pandey",
-    createdAt: "2024-03-10",
-    grantedCountries: ["United Kingdom", "Finland", "Netherlands"],
-    grantedUniversities: ["University of Cambridge", "University of Tokyo"],
-    grantedStudyAreas: ["Law", "Arts & Humanities"],
-    admins: [],
-    documents: [],
-    bankName: "",
-    accountNumber: "",
-    swiftCode: "",
-  },
-};
 
 export default function CompanyDetailsPage() {
   const [company, setCompany] = useState(null);
@@ -116,39 +34,72 @@ export default function CompanyDetailsPage() {
   const id = Array.isArray(params?.id) ? params.id[0] : params?.id;
 
   useEffect(() => {
-    if (!id) {
-      setCompany(null);
-      setLoading(false);
-      return;
-    }
+    if (!id) return;
 
-    const companyData = MOCK_COMPANIES[id];
+    const fetchCompany = async () => {
+      try {
+        setLoading(true);
+        const res = await fetch(`/api/company?id=${id}`);
+        const result = await res.json();
 
-    if (companyData) {
-      setCompany(companyData);
-    } else {
-      setCompany(null);
-    }
-    setLoading(false);
+        if (result.success) {
+          setCompany(result.data);
+        } else {
+          setCompany(null);
+        }
+      } catch (error) {
+        console.log(error);
+        toast.error("Failed to load company");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCompany();
   }, [id]);
 
   const handleEdit = () => {
     setIsEditModalOpen(true);
   };
 
-  const handleUpdateCompany = (updatedData) => {
+  const handleUpdateCompany = async (updatedData) => {
     setCompany({
       ...company,
       ...updatedData,
     });
+    
+    try {
+      const res = await fetch(`/api/company?id=${id}`);
+      const result = await res.json();
+      if (result.success) {
+        setCompany(result.data);
+      }
+    } catch (error) {
+      console.error('Error refreshing company data:', error);
+    }
+    
     setIsEditModalOpen(false);
     toast.success("Company updated successfully!");
   };
 
-  const confirmDelete = () => {
-    setIsDeleteModalOpen(false);
-    toast.success("Company deleted successfully!");
-    router.push("/dashboard/managecompanies");
+  const confirmDelete = async () => {
+    try {
+      const res = await fetch(`/api/company?id=${id}`, {
+        method: "DELETE",
+      });
+
+      const result = await res.json();
+
+      if (result.success) {
+        toast.success("Company deleted successfully!");
+        router.push("/dashboard/managecompanies");
+      } else {
+        toast.error(result.message);
+      }
+    } catch (error) {
+      console.log(error);
+      toast.error("Failed to delete company");
+    }
   };
 
   const handleGrantAccess = (accessData) => {
@@ -174,21 +125,11 @@ export default function CompanyDetailsPage() {
     toast.success("Company banking details added successfully!");
   };
 
-  const handleAddAdmin = (adminData) => {
-    const newAdmin = {
-      id: Date.now().toString(),
-      ...adminData,
-      role: "Admin",
-      createdAt: new Date().toISOString().split("T")[0],
-    };
+  const handleAddAdmin = (newAdmin) => {
     setCompany({
       ...company,
       admins: [...(company?.admins || []), newAdmin],
     });
-    setIsAddAdminOpen(false);
-    toast.success(
-      `Admin ${adminData.firstName} ${adminData.lastName} added successfully!`
-    );
   };
 
   if (loading) {
@@ -262,7 +203,7 @@ export default function CompanyDetailsPage() {
                 <Edit size={16} />
                 Edit
               </button>
-              
+
               <button
                 onClick={() =>
                   router.push(`/dashboard/managecompanies/${id}/addReferred`)
@@ -272,6 +213,7 @@ export default function CompanyDetailsPage() {
                 <UserRoundPlus size={16} />
                 Add Referred
               </button>
+
               <button
                 onClick={() => setIsGrantAccessOpen(true)}
                 className="px-4 py-2 bg-green-500/20 text-black rounded-lg hover:bg-teal-200 cursor-pointer transition-colors text-sm flex items-center gap-1.5"
@@ -279,12 +221,22 @@ export default function CompanyDetailsPage() {
                 <Lock size={16} />
                 Allow Access
               </button>
+
               <button
                 onClick={() => setIsAddAdminOpen(true)}
                 className="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 cursor-pointer transition-colors text-sm flex items-center gap-1.5"
               >
                 <UserPlus size={16} />
                 Add Admin
+              </button>
+
+              {/* Delete Button */}
+              <button
+                onClick={() => setIsDeleteModalOpen(true)}
+                className="px-4 py-2 bg-red-500/20 text-red-600 rounded-lg hover:bg-red-200 cursor-pointer transition-colors text-sm flex items-center gap-1.5"
+              >
+                <Trash2 size={16} />
+                Delete
               </button>
             </div>
           </div>
@@ -294,7 +246,8 @@ export default function CompanyDetailsPage() {
           <GrantAccessModal
             isOpen={isGrantAccessOpen}
             onClose={() => setIsGrantAccessOpen(false)}
-            onSubmit={handleGrantAccess}
+            onGrantAccess={handleGrantAccess}
+            companyId={id}
             companyName={company.name}
             initialCountries={company.grantedCountries || []}
             initialUniversities={company.grantedUniversities || []}
@@ -311,8 +264,9 @@ export default function CompanyDetailsPage() {
           <AddAdminModal
             isOpen={isAddAdminOpen}
             onClose={() => setIsAddAdminOpen(false)}
-            onSubmit={handleAddAdmin}
+            companyId={id}
             companyName={company.name}
+            onAdminAdded={handleAddAdmin}
           />
 
           <EditCompanyModal
@@ -322,6 +276,7 @@ export default function CompanyDetailsPage() {
             companyData={company}
           />
 
+          {/* Delete Confirmation Modal */}
           {isDeleteModalOpen && (
             <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
               <div className="bg-white rounded-xl max-w-md w-full mx-4 overflow-hidden shadow-2xl">

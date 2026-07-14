@@ -53,7 +53,6 @@ export default function CompanyDetails({ company }) {
           </div>
         </div>
       </div>
-
     </div>
   );
 }

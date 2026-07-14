@@ -1,10 +1,11 @@
-// app/page.js (Login Page)
+// src/app/page.js
 "use client";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Mail, Lock, Check } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import Cookies from 'js-cookie';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -12,6 +13,31 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [showSuperAdminSetup, setShowSuperAdminSetup] = useState(false);
+
+  // Check if super admin exists on page load
+  useEffect(() => {
+    async function checkSuperAdmin() {
+      try {
+        const response = await fetch('/api/register');
+        const data = await response.json();
+        
+        if (!data.exists) {
+          setShowSuperAdminSetup(true);
+        }
+      } catch (error) {
+        console.error('Error checking super admin:', error);
+      }
+    }
+    
+    checkSuperAdmin();
+
+    // Redirect if already logged in
+    const token = Cookies.get('token');
+    if (token) {
+      router.push('/dashboard');
+    }
+  }, [router]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -26,21 +52,64 @@ export default function LoginPage() {
     }
 
     try {
-      // Here you would typically make an API call to authenticate
-      // For demo purposes, we'll just navigate to dashboard
-      // In production, you would validate credentials with your backend
+      const response = await fetch("/api/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        // Handle deactivated account error
+        if (response.status === 403) {
+          throw new Error(data.error || "Your account has been deactivated. Please contact your administrator.");
+        }
+        throw new Error(data.error || "Invalid email or password. Please try again.");
+      }
       
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Store user info in localStorage
+      const userData = {
+        id: data.user?.id || '',
+        email: data.user?.email || email,
+        role: data.user?.role || 'admin',
+        name: data.user?.name || '',
+        firstName: data.user?.firstName || '',
+        lastName: data.user?.lastName || '',
+        companyId: data.user?.companyId || null,
+        isActive: data.user?.isActive !== undefined ? data.user.isActive : true,
+      };
       
-      // Store authentication token (in real app, this would come from your API)
+      localStorage.setItem("user", JSON.stringify(userData));
       localStorage.setItem("isAuthenticated", "true");
-      localStorage.setItem("userEmail", email);
+      localStorage.setItem("userEmail", userData.email);
+      localStorage.setItem("userRole", userData.role);
+      localStorage.setItem("userName", userData.name || userData.firstName || '');
+      localStorage.setItem("userId", userData.id);
+      localStorage.setItem("userCompanyId", userData.companyId || '');
+      localStorage.setItem("userIsActive", String(userData.isActive));
+
+      // Store token in localStorage as backup
+      if (data.token) {
+        localStorage.setItem("token", data.token);
+      }
       
-      // Navigate to dashboard
+      // Set token in cookie for middleware
+      if (data.token) {
+        Cookies.set('token', data.token, { 
+          expires: 7,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'strict'
+        });
+      }
+
+      // Redirect to dashboard
       router.push("/dashboard");
+      
     } catch (err) {
-      setError("Invalid email or password. Please try again.");
+      setError(err.message || "Something went wrong. Please try again later.");
     } finally {
       setIsLoading(false);
     }
@@ -87,6 +156,20 @@ export default function LoginPage() {
             <h2 className="text-3xl font-bold">Sign In</h2>
             <p className="text-gray-500 mt-2">Login to your email hosting panel</p>
           </div>
+
+          {showSuperAdminSetup && (
+            <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <p className="text-sm text-yellow-800 font-medium mb-1">
+                ⚠️ No Super Admin Found
+              </p>
+              <p className="text-xs text-yellow-700">
+                Please run the super admin seed script first:
+              </p>
+              <code className="text-xs bg-yellow-100 px-2 py-1 rounded mt-1 block">
+                npm run seed:superadmin
+              </code>
+            </div>
+          )}
 
           {error && (
             <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-lg text-sm">

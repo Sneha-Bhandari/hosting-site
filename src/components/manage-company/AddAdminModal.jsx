@@ -5,7 +5,6 @@ import * as Yup from "yup";
 import { useState } from 'react';
 import toast from "react-hot-toast";
 
-// Validation Schema
 const AdminSchema = Yup.object().shape({
   firstName: Yup.string()
     .required("First name is required")
@@ -21,7 +20,7 @@ const AdminSchema = Yup.object().shape({
     .min(6, "Password must be at least 6 characters"),
 });
 
-export default function AddAdminModal({ isOpen, onClose, onSubmit, companyName }) {
+export default function AddAdminModal({ isOpen, onClose, companyId, companyName, onAdminAdded }) {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -30,15 +29,40 @@ export default function AddAdminModal({ isOpen, onClose, onSubmit, companyName }
   const handleSubmit = async (values, { resetForm, setSubmitting }) => {
     try {
       setIsLoading(true);
-      await onSubmit(values);
+      
+      const response = await fetch('/api/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: values.email,
+          password: values.password,
+          role: 'admin',
+          companyId: companyId,
+          firstName: values.firstName,
+          lastName: values.lastName,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to add admin');
+      }
+
+      toast.success(`Admin ${values.firstName} ${values.lastName} added successfully!`);
       resetForm();
-      setTimeout(() => {
-        onClose();
-      }, 1000);
+      
+      if (onAdminAdded) {
+        onAdminAdded(result.user);
+      }
+      
+      onClose();
       
     } catch (error) {
       console.error("Error adding admin:", error);
-      toast.error("Failed to add admin. Please try again.");
+      toast.error(error.message || "Failed to add admin. Please try again.");
     } finally {
       setIsLoading(false);
       setSubmitting(false);
@@ -47,7 +71,6 @@ export default function AddAdminModal({ isOpen, onClose, onSubmit, companyName }
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-  
       <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4">
         <div className="p-6">
           <div className="flex justify-between items-center mb-4">
@@ -59,7 +82,7 @@ export default function AddAdminModal({ isOpen, onClose, onSubmit, companyName }
               className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors text-gray-400 hover:text-gray-600"
               disabled={isLoading}
             >
-            X
+              <span className="text-2xl">×</span>
             </button>
           </div>
 
@@ -86,7 +109,7 @@ export default function AddAdminModal({ isOpen, onClose, onSubmit, companyName }
                   <Field
                     name="firstName"
                     type="text"
-                    placeholder="Enter your first name"
+                    placeholder="Enter first name"
                     className={`mt-1 block w-full rounded-xl border ${
                       touched.firstName && errors.firstName 
                         ? 'border-red-500 focus:ring-red-500' 
@@ -104,7 +127,7 @@ export default function AddAdminModal({ isOpen, onClose, onSubmit, companyName }
                   <Field
                     name="lastName"
                     type="text"
-                    placeholder="Enter your last name"
+                    placeholder="Enter last name"
                     className={`mt-1 block w-full rounded-xl border ${
                       touched.lastName && errors.lastName 
                         ? 'border-red-500 focus:ring-red-500' 
@@ -122,7 +145,7 @@ export default function AddAdminModal({ isOpen, onClose, onSubmit, companyName }
                   <Field
                     name="email"
                     type="email"
-                    placeholder="Enter user email"
+                    placeholder="Enter admin email"
                     className={`mt-1 block w-full rounded-xl border ${
                       touched.email && errors.email 
                         ? 'border-red-500 focus:ring-red-500' 
@@ -141,7 +164,7 @@ export default function AddAdminModal({ isOpen, onClose, onSubmit, companyName }
                     <Field
                       name="password"
                       type={showPassword ? 'text' : 'password'}
-                      placeholder="Create Account"
+                      placeholder="Create password (min 6 characters)"
                       className={`mt-1 block w-full rounded-xl border ${
                         touched.password && errors.password 
                           ? 'border-red-500 focus:ring-red-500' 

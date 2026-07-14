@@ -66,7 +66,6 @@ const COUNTRY_CODES = {
 const detectCountryFromPhone = (phoneNumber) => {
   if (!phoneNumber) return "Nepal";
   const cleanNumber = phoneNumber.replace(/\s/g, '');
-  // Check each country code to see if it matches
   for (const [country, code] of Object.entries(COUNTRY_CODES)) {
     if (cleanNumber.startsWith(code)) {
       return country;
@@ -77,7 +76,6 @@ const detectCountryFromPhone = (phoneNumber) => {
 
 const extractPhoneNumber = (phoneNumber) => {
   if (!phoneNumber) return "";
-  // Remove the country code from the beginning
   const cleanNumber = phoneNumber.replace(/\s/g, '');
   for (const code of Object.values(COUNTRY_CODES)) {
     if (cleanNumber.startsWith(code)) {
@@ -127,7 +125,7 @@ export default function EditCompanyModal({ isOpen, onClose, onSubmit, companyDat
   const handleSubmit = async (values, { resetForm, setSubmitting }) => {
     try {
       setIsLoading(true);
-      // Combine country code with the phone number
+      
       const fullContactNumber = `${COUNTRY_CODES[contactCountry]}${values.contactNumber}`;
       const fullFinancialContact = `${COUNTRY_CODES[financialContactCountry]}${values.financialContact}`;
       
@@ -137,15 +135,31 @@ export default function EditCompanyModal({ isOpen, onClose, onSubmit, companyDat
         financialContact: fullFinancialContact,
       };
       
-      await onSubmit(updatedValues);
-    //   toast.success("Company updated successfully!");
+      const response = await fetch(`/api/company?id=${companyData.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updatedValues),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message || 'Failed to update company');
+      }
+
+      if (onSubmit) {
+        onSubmit(result.data);
+      }
+      
+      toast.success("Company updated successfully!");
       resetForm();
-      setTimeout(() => {
-        onClose();
-      }, 1000);
+      onClose();
+      
     } catch (error) {
       console.error("Error updating company:", error);
-      toast.error("Failed to update company. Please try again.");
+      toast.error(error.message || "Failed to update company. Please try again.");
     } finally {
       setIsLoading(false);
       setSubmitting(false);
@@ -207,7 +221,11 @@ export default function EditCompanyModal({ isOpen, onClose, onSubmit, companyDat
                         name="name"
                         type="text"
                         placeholder="Enter Name"
-                        className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-teal-500 focus:ring-2 focus:ring-teal-400/60 focus:outline-none transition-all text-sm"
+                        className={`mt-1 block w-full rounded-md border ${
+                          touched.name && errors.name 
+                            ? 'border-red-500 focus:ring-red-500' 
+                            : 'border-gray-300 focus:ring-teal-400/60'
+                        } px-3 py-2 focus:border-teal-500 focus:ring-2 focus:outline-none transition-all text-sm`}
                         disabled={isLoading || isSubmitting}
                       />
                       <ErrorMessage name="name" component="div" className="text-red-500 text-xs mt-1" />
@@ -251,7 +269,11 @@ export default function EditCompanyModal({ isOpen, onClose, onSubmit, companyDat
                             name="contactNumber"
                             type="tel"
                             placeholder="Enter contact number"
-                            className="flex-1 rounded-r-md border border-gray-300 px-3 py-2 focus:border-teal-500 focus:ring-2 focus:ring-teal-400/60 focus:outline-none transition-all text-sm"
+                            className={`flex-1 rounded-r-md border ${
+                              touched.contactNumber && errors.contactNumber 
+                                ? 'border-red-500 focus:ring-red-500' 
+                                : 'border-gray-300 focus:ring-teal-400/60'
+                            } px-3 py-2 focus:border-teal-500 focus:ring-2 focus:outline-none transition-all text-sm`}
                             disabled={isLoading || isSubmitting}
                           />
                         </div>
@@ -297,7 +319,11 @@ export default function EditCompanyModal({ isOpen, onClose, onSubmit, companyDat
                             name="financialContact"
                             type="tel"
                             placeholder="Enter financial contact"
-                            className="flex-1 rounded-r-md border border-gray-300 px-3 py-2 focus:border-teal-500 focus:ring-2 focus:ring-teal-400/60 focus:outline-none transition-all text-sm"
+                            className={`flex-1 rounded-r-md border ${
+                              touched.financialContact && errors.financialContact 
+                                ? 'border-red-500 focus:ring-red-500' 
+                                : 'border-gray-300 focus:ring-teal-400/60'
+                            } px-3 py-2 focus:border-teal-500 focus:ring-2 focus:outline-none transition-all text-sm`}
                             disabled={isLoading || isSubmitting}
                           />
                         </div>
@@ -311,7 +337,11 @@ export default function EditCompanyModal({ isOpen, onClose, onSubmit, companyDat
                         name="email"
                         type="email"
                         placeholder="Email"
-                        className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-teal-500 focus:ring-2 focus:ring-teal-400/60 focus:outline-none transition-all text-sm"
+                        className={`mt-1 block w-full rounded-md border ${
+                          touched.email && errors.email 
+                            ? 'border-red-500 focus:ring-red-500' 
+                            : 'border-gray-300 focus:ring-teal-400/60'
+                        } px-3 py-2 focus:border-teal-500 focus:ring-2 focus:outline-none transition-all text-sm`}
                         disabled={isLoading || isSubmitting}
                       />
                       <ErrorMessage name="email" component="div" className="text-red-500 text-xs mt-1" />
@@ -323,7 +353,11 @@ export default function EditCompanyModal({ isOpen, onClose, onSubmit, companyDat
                         name="address1"
                         type="text"
                         placeholder="Enter Address 1"
-                        className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-teal-500 focus:ring-2 focus:ring-teal-400/60 focus:outline-none transition-all text-sm"
+                        className={`mt-1 block w-full rounded-md border ${
+                          touched.address1 && errors.address1 
+                            ? 'border-red-500 focus:ring-red-500' 
+                            : 'border-gray-300 focus:ring-teal-400/60'
+                        } px-3 py-2 focus:border-teal-500 focus:ring-2 focus:outline-none transition-all text-sm`}
                         disabled={isLoading || isSubmitting}
                       />
                       <ErrorMessage name="address1" component="div" className="text-red-500 text-xs mt-1" />
@@ -349,7 +383,11 @@ export default function EditCompanyModal({ isOpen, onClose, onSubmit, companyDat
                         name="city"
                         type="text"
                         placeholder="Enter City"
-                        className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-teal-500 focus:ring-2 focus:ring-teal-400/60 focus:outline-none transition-all text-sm"
+                        className={`mt-1 block w-full rounded-md border ${
+                          touched.city && errors.city 
+                            ? 'border-red-500 focus:ring-red-500' 
+                            : 'border-gray-300 focus:ring-teal-400/60'
+                        } px-3 py-2 focus:border-teal-500 focus:ring-2 focus:outline-none transition-all text-sm`}
                         disabled={isLoading || isSubmitting}
                       />
                       <ErrorMessage name="city" component="div" className="text-red-500 text-xs mt-1" />
@@ -360,7 +398,11 @@ export default function EditCompanyModal({ isOpen, onClose, onSubmit, companyDat
                       <Field
                         as="select"
                         name="country"
-                        className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-teal-500 focus:ring-2 focus:ring-teal-400/60 focus:outline-none transition-all text-sm"
+                        className={`mt-1 block w-full rounded-md border ${
+                          touched.country && errors.country 
+                            ? 'border-red-500 focus:ring-red-500' 
+                            : 'border-gray-300 focus:ring-teal-400/60'
+                        } px-3 py-2 focus:border-teal-500 focus:ring-2 focus:outline-none transition-all text-sm`}
                         disabled={isLoading || isSubmitting}
                       >
                         <option value="">Select Country</option>
@@ -377,7 +419,11 @@ export default function EditCompanyModal({ isOpen, onClose, onSubmit, companyDat
                         name="state"
                         type="text"
                         placeholder="Enter State"
-                        className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-teal-500 focus:ring-2 focus:ring-teal-400/60 focus:outline-none transition-all text-sm"
+                        className={`mt-1 block w-full rounded-md border ${
+                          touched.state && errors.state 
+                            ? 'border-red-500 focus:ring-red-500' 
+                            : 'border-gray-300 focus:ring-teal-400/60'
+                        } px-3 py-2 focus:border-teal-500 focus:ring-2 focus:outline-none transition-all text-sm`}
                         disabled={isLoading || isSubmitting}
                       />
                       <ErrorMessage name="state" component="div" className="text-red-500 text-xs mt-1" />
@@ -389,7 +435,11 @@ export default function EditCompanyModal({ isOpen, onClose, onSubmit, companyDat
                         name="website"
                         type="url"
                         placeholder="Enter company website url"
-                        className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-teal-500 focus:ring-2 focus:ring-teal-400/60 focus:outline-none transition-all text-sm"
+                        className={`mt-1 block w-full rounded-md border ${
+                          touched.website && errors.website 
+                            ? 'border-red-500 focus:ring-red-500' 
+                            : 'border-gray-300 focus:ring-teal-400/60'
+                        } px-3 py-2 focus:border-teal-500 focus:ring-2 focus:outline-none transition-all text-sm`}
                         disabled={isLoading || isSubmitting}
                       />
                       <ErrorMessage name="website" component="div" className="text-red-500 text-xs mt-1" />
@@ -401,7 +451,11 @@ export default function EditCompanyModal({ isOpen, onClose, onSubmit, companyDat
                         name="zipCode"
                         type="text"
                         placeholder="Enter Zip Code"
-                        className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-teal-500 focus:ring-2 focus:ring-teal-400/60 focus:outline-none transition-all text-sm"
+                        className={`mt-1 block w-full rounded-md border ${
+                          touched.zipCode && errors.zipCode 
+                            ? 'border-red-500 focus:ring-red-500' 
+                            : 'border-gray-300 focus:ring-teal-400/60'
+                        } px-3 py-2 focus:border-teal-500 focus:ring-2 focus:outline-none transition-all text-sm`}
                         disabled={isLoading || isSubmitting}
                       />
                       <ErrorMessage name="zipCode" component="div" className="text-red-500 text-xs mt-1" />
@@ -413,7 +467,11 @@ export default function EditCompanyModal({ isOpen, onClose, onSubmit, companyDat
                         name="regionalIncharge"
                         type="text"
                         placeholder="Enter Regional Incharge"
-                        className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-teal-500 focus:ring-2 focus:ring-teal-400/60 focus:outline-none transition-all text-sm"
+                        className={`mt-1 block w-full rounded-md border ${
+                          touched.regionalIncharge && errors.regionalIncharge 
+                            ? 'border-red-500 focus:ring-red-500' 
+                            : 'border-gray-300 focus:ring-teal-400/60'
+                        } px-3 py-2 focus:border-teal-500 focus:ring-2 focus:outline-none transition-all text-sm`}
                         disabled={isLoading || isSubmitting}
                       />
                       <ErrorMessage name="regionalIncharge" component="div" className="text-red-500 text-xs mt-1" />
